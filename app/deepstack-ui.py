@@ -14,7 +14,7 @@ DEEPSTACK_IP = os.getenv("DEEPSTACK_IP", "localhost")
 DEEPSTACK_PORT = os.getenv("DEEPSTACK_PORT", 80)
 DEEPSTACK_API_KEY = os.getenv("DEEPSTACK_API_KEY", "")
 DEEPSTACK_TIMEOUT = int(os.getenv("DEEPSTACK_TIMEOUT", 30))
-DEEPSTACK_CUSTOM_MODEL = os.getenv("DEEPSTACK_CUSTOM_MODEL", None)
+DEEPSTACK_CUSTOM_MODELS = os.getenv("DEEPSTACK_CUSTOM_MODELS", None)
 DEEPSTACK_UI_DEBUG_MODE = bool(os.getenv("DEEPSTACK_UI_DEBUG_MODE", False))
 
 if DEEPSTACK_UI_DEBUG_MODE:
@@ -144,10 +144,13 @@ if deepstack_mode == FACE:
 elif deepstack_mode == OBJECT:
     ## Setup main
     st.title("Deepstack Object detection")
-    if not DEEPSTACK_CUSTOM_MODEL:
+    customModel = None
+    if not DEEPSTACK_CUSTOM_MODELS:
         st.text("Using default model")
     else:
-        st.text(f"Using custom model named {DEEPSTACK_CUSTOM_MODEL}")
+        DEEPSTACK_CUSTOM_MODELS = DEEPSTACK_CUSTOM_MODELS.split(',')
+        DEEPSTACK_CUSTOM_MODELS.insert(0, 'default')
+        customModel = st.selectbox("Select Deepstack model:", DEEPSTACK_CUSTOM_MODELS)
 
     # Get ROI info
     st.sidebar.title("ROI")
@@ -170,7 +173,7 @@ elif deepstack_mode == OBJECT:
 
     img_file_buffer = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
-    if not DEEPSTACK_CUSTOM_MODEL:
+    if not DEEPSTACK_CUSTOM_MODELS:
         CLASSES_TO_INCLUDE = st.sidebar.multiselect(
             "Select object classes to include",
             options=const.CLASSES,
@@ -184,7 +187,7 @@ elif deepstack_mode == OBJECT:
     else:
         pil_image = Image.open(OBJECT_TEST_IMAGE)
 
-    if not DEEPSTACK_CUSTOM_MODEL:
+    if not DEEPSTACK_CUSTOM_MODELS:
         dsobject = ds.DeepstackObject(
             ip=DEEPSTACK_IP,
             port=DEEPSTACK_PORT,
@@ -199,7 +202,7 @@ elif deepstack_mode == OBJECT:
             api_key=DEEPSTACK_API_KEY,
             timeout=DEEPSTACK_TIMEOUT,
             min_confidence=MIN_CONFIDENCE_THRESHOLD,
-            custom_model=DEEPSTACK_CUSTOM_MODEL,
+            custom_model=customModel,
         )
 
     predictions = process_image_object(pil_image, dsobject)
@@ -209,7 +212,7 @@ elif deepstack_mode == OBJECT:
     # Filter objects for display
     objects = [obj for obj in objects if obj["confidence"] > CONFIDENCE_THRESHOLD]
     objects = [obj for obj in objects if utils.object_in_roi(ROI_DICT, obj["centroid"])]
-    if not DEEPSTACK_CUSTOM_MODEL:
+    if not DEEPSTACK_CUSTOM_MODELS:
         objects = [obj for obj in objects if obj["name"] in CLASSES_TO_INCLUDE]
 
     # Draw object boxes
